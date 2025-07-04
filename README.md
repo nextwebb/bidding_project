@@ -250,13 +250,13 @@ Test categories:
 - `DATABASE_URL`: PostgreSQL connection string
 - `REDIS_URL`: Redis connection string
 
-## Bonus Features Deep Dive
+## Bonus Feature Deep Dive
 
 ### 🚀 TypeScript Competitor Monitor
 
 The competitor monitor is a standalone TypeScript microservice that enhances the bidding engine with real-time competitor pricing data.
 
-#### Features
+#### Feature
 
 - **Automated Fetching**: Polls DummyJSON API every 5 minutes
 - **Data Storage**: Pushes standardized competitor prices to Redis

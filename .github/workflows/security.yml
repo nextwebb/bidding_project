@@ -1,0 +1,150 @@
+name: Security Scanning
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Weekly on Monday at 6 AM UTC
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+
+      - name: Scan Python dependencies
+        run: |
+          pip install -r requirements.txt
+          pip-audit --format=json --output=pip-audit-report.json
+          pip-audit
+
+      - name: Upload Python scan results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-security-scan
+          path: pip-audit-report.json
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Scan Node.js dependencies
+        working-directory: ./competitor-monitor
+        run: |
+          npm audit --audit-level=high
+
+  container-scan:
+    name: Container Image Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: |
+          docker build -t adtech-backend:test .
+
+      - name: Build competitor-monitor image
+        run: |
+          docker build -t adtech-competitor:test ./competitor-monitor
+
+      - name: Run Trivy vulnerability scanner - Backend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "adtech-backend:test"
+          format: "sarif"
+          output: "backend-trivy-results.sarif"
+
+      - name: Run Trivy vulnerability scanner - Competitor Monitor
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "adtech-competitor:test"
+          format: "sarif"
+          output: "competitor-trivy-results.sarif"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: "."
+
+  secrets-scan:
+    name: Secrets Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install pip-licenses
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-licenses
+
+      - name: Check Python licenses
+        run: |
+          pip install -r requirements.txt
+          pip-licenses --format=json --output-file=python-licenses.json
+          pip-licenses
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Install license-checker
+        run: |
+          npm install -g license-checker
+
+      - name: Check Node.js licenses
+        working-directory: ./competitor-monitor
+        run: |
+          npm install
+          license-checker --json --out ../node-licenses.json
+          license-checker
+
+      - name: Upload license reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: license-reports
+          path: |
+            python-licenses.json
+            node-licenses.json
