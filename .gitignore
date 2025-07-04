@@ -1,0 +1,40 @@
+# Byte-compiled / optimized / compiled files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg
+*.egg-info/
+
+# Distribution / packaging
+.Python
+env/
+venv/
+pip-wheel-metadata/
+dist/
+build/
+*.whl
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.bak
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.sqlite3
+
+# Specific to Python tools
+.pytest_cache/
+.coverage
+htmlcov/
+.nox/
+.mypy_cache/
+.ipynb_checkpoints/

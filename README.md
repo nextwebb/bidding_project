@@ -120,6 +120,14 @@ CREATE INDEX bidding_productbid_performance_idx
 ON bidding_productbid (calculated_at DESC, product_id);
 ```
 
+### Performance Testing
+
+```bash
+# Run the database performance test
+docker-compose exec web python -m pytest test_performance.py::test_query_performance -v -s
+```
+
+
 ### Performance Analysis
 
 **Before Index (EXPLAIN ANALYZE):**
@@ -140,8 +148,8 @@ Index Scan using bidding_productbid_performance_idx on bidding_productbid
   (cost=0.28..8.30 rows=1 width=57) (actual time=0.012..0.012 rows=0 loops=1)
   Index Cond: (calculated_at > (now() - '7 days'::interval))
 
-Planning Time: 0.089 ms
-Execution Time: 0.025 ms
+Planning Time: 0.076 ms
+Execution Time: 0.023 ms
 ```
 
 **Performance Improvement:**
