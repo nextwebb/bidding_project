@@ -38,3 +38,6 @@ htmlcov/
 .nox/
 .mypy_cache/
 .ipynb_checkpoints/
+
+.github/
+chart/

@@ -289,35 +289,6 @@ redis_client = redis.Redis.from_url(settings.REDIS_URL)
 prices = [json.loads(p) for p in redis_client.lrange('competitor_prices', 0, 9)]
 ```
 
-### ☸️ Kubernetes Deployment with Helm
-
-Production-ready Kubernetes deployment using Helm charts for Amazon EKS.
-
-#### Features
-
-- **Multi-Environment**: Staging and production configurations
-- **Auto-scaling**: HPA for web and worker pods
-- **Load Balancing**: AWS ALB integration
-- **Monitoring**: Health checks and metrics collection
-- **Security**: Pod security contexts, service accounts
-
-#### Quick Deploy
-
-```bash
-# Install to staging
-helm install adtech-staging chart/ \
-  --namespace staging \
-  --set image.tag=v1.0.0 \
-  --set env.DEBUG=1
-
-# Install to production
-helm install adtech-prod chart/ \
-  --namespace production \
-  --set image.tag=v1.0.0 \
-  --set replicaCount=3 \
-  --set resources.limits.memory=1Gi
-```
-
 #### Components Deployed
 
 - **Web App**: Django API with HPA (2-10 replicas)
@@ -345,14 +316,7 @@ Comprehensive GitHub Actions workflow with security scanning and automated deplo
    isort --check-only --diff .
    ```
 
-2. **Security Scanning**
-
-   - Dependency vulnerability scanning
-   - Container image security analysis
-   - Secrets detection with TruffleHog
-   - License compliance checking
-
-3. **Testing**
+2. **Testing**
 
    ```bash
    # Run tests with coverage
@@ -360,57 +324,7 @@ Comprehensive GitHub Actions workflow with security scanning and automated deplo
    coverage report --fail-under=80
    ```
 
-4. **Build & Deploy**
-   - Multi-arch Docker builds
-   - Automated staging deployments
-   - Production deployments with approval
-   - Slack notifications
-
-#### Workflow Files
-
-- `.github/workflows/ci.yml`: Main CI/CD pipeline
-- `.github/workflows/security.yml`: Security scanning
-
 ### Production Deployment Architecture
-
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   GitHub        │    │   Amazon EKS     │    │   External      │
-│                 │    │                  │    │                 │
-│ ┌─────────────┐ │    │ ┌──────────────┐ │    │ ┌─────────────┐ │
-│ │   CI/CD     │─┼────┼►│  Web Pods    │ │    │ │ DummyJSON   │ │
-│ │  Pipeline   │ │    │ │  (Django)    │ │    │ │   API       │ │
-│ └─────────────┘ │    │ └──────────────┘ │    │ └─────────────┘ │
-│                 │    │                  │    │                 │
-│ ┌─────────────┐ │    │ ┌──────────────┐ │    │ ┌─────────────┐ │
-│ │  Container  │─┼────┼►│ Worker Pods  │ │    │ │   Clients   │ │
-│ │  Registry   │ │    │ │   (Huey)     │ │    │ │   (HTTP)    │ │
-│ └─────────────┘ │    │ └──────────────┘ │    │ └─────────────┘ │
-└─────────────────┘    │                  │    └─────────────────┘
-                       │ ┌──────────────┐ │
-                       │ │ Competitor   │ │
-                       │ │ Monitor Pods │ │
-                       │ │ (TypeScript) │ │
-                       │ └──────────────┘ │
-                       │                  │
-                       │ ┌──────────────┐ │
-                       │ │ PostgreSQL   │ │
-                       │ │   & Redis    │ │
-                       │ └──────────────┘ │
-                       └──────────────────┘
-```
-
-## Production Considerations
-
-- Set `DEBUG=False` in production
-- Use environment-specific secrets for `SECRET_KEY`
-- Configure proper Redis persistence
-- Set up database connection pooling
-- Implement logging and monitoring
-- Use HTTPS for API endpoints
-- Enable container image scanning
-- Set resource limits and requests
-- Configure backup strategies
 
 ## Complete Feature Matrix
 
@@ -421,7 +335,5 @@ Comprehensive GitHub Actions workflow with security scanning and automated deplo
 | **PHP Migration**      | ✅ price_helper.py    | ➕ Full test coverage   | ✅ Complete |
 | **DB Performance**     | ✅ Index optimization | ➕ Query analysis tools | ✅ Complete |
 | **TypeScript Service** | ➕ Competitor monitor | ➕ Health monitoring    | ✅ Complete |
-| **Kubernetes**         | ➕ Helm chart         | ➕ Auto-scaling + ALB   | ✅ Complete |
-| **CI/CD**              | ➕ GitHub Actions     | ➕ Security + Multi-env | ✅ Complete |
 
-This solution demonstrates enterprise-grade AdTech development practices with comprehensive testing, security, monitoring, and deployment automation suitable for production environments.
+This solution demonstrates AdTech development practices with comprehensive testing, security, monitoring, and deployment automation suitable for production environments.
