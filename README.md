@@ -1,6 +1,6 @@
 # AdTech Bid Engine
 
-This project implements a comprehensive AdTech bidding engine with Django REST API, async job processing, TypeScript microservices, Kubernetes deployment, and full CI/CD pipeline.
+This project implements a comprehensive AdTech bidding engine with Django REST API, async job processing, TypeScript microservice .
 
 ## Features
 
@@ -20,21 +20,6 @@ This project implements a comprehensive AdTech bidding engine with Django REST A
 - **Redis Integration**: Pushes competitor prices to `competitor_prices` list
 - **Health Monitoring**: HTTP endpoints for system health checks
 - **Production Ready**: Structured logging, error handling, Docker containerized
-
-#### ☸️ Kubernetes Deployment
-
-- **Helm Chart**: Production-ready chart for EKS deployment
-- **Auto-scaling**: Horizontal Pod Autoscaler (HPA) configured
-- **Load Balancing**: AWS ALB integration with ingress
-- **Multi-component**: Web app, workers, competitor monitor, PostgreSQL, Redis
-
-#### 🔄 CI/CD Pipeline
-
-- **GitHub Actions**: Complete workflow with multiple stages
-- **Code Quality**: Ruff linting, Black formatting, security scanning
-- **Testing**: Automated testing with coverage reporting
-- **Security**: Container scanning, dependency audits, secrets detection
-- **Deployment**: Automated staging and production deployments
 
 ## Quick Start
 
@@ -296,10 +281,6 @@ prices = [json.loads(p) for p in redis_client.lrange('competitor_prices', 0, 9)]
 - **Competitor Monitor**: TypeScript service (1 replica)
 - **PostgreSQL**: Primary database with persistent storage
 - **Redis**: Message queue and cache
-
-### 🔄 CI/CD Pipeline
-
-Comprehensive GitHub Actions workflow with security scanning and automated deployments.
 
 #### Pipeline Stages
 

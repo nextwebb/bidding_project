@@ -11,25 +11,13 @@ This is a **comprehensive AdTech bidding engine** that goes beyond the core requ
 - **C**: Legacy PHP→Python migration with identical behavior
 - **D**: Database performance optimization with composite indexing
 
-### 🚀 ALL Bonus Tasks Implemented
+### 🚀 Bonus Tasks Implemented
 
 #### 1. TypeScript Microservice ✅
 
 - **Competitor Monitor** service fetching from DummyJSON API
 - Pushes competitor prices to Redis list `competitor_prices`
 - Health monitoring endpoints and production-ready logging
-
-#### 2. Helm Chart for EKS ✅
-
-- **Production-ready Kubernetes deployment**
-- Auto-scaling with HPA, AWS ALB integration
-- Multi-component chart (web, workers, competitor monitor, PostgreSQL, Redis)
-
-#### 3. GitHub Actions CI/CD ✅
-
-- **Complete pipeline** with ruff linting, pytest, Docker builds
-- Security scanning, multi-environment deployments
-- Automated staging and production deployments
 
 ---
 
@@ -38,8 +26,6 @@ This is a **comprehensive AdTech bidding engine** that goes beyond the core requ
 ### Prerequisites
 
 - Docker and docker-compose
-- For Kubernetes: kubectl, Helm 3.x, AWS CLI
-- For CI/CD: GitHub repository with Actions enabled
 
 ### 1. Local Development (Complete Stack)
 
