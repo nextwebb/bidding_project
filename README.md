@@ -1,4 +1,4 @@
-# AdTech Bid Engine - Complete Enterprise Solution
+# AdTech Bid Engine
 
 This project implements a comprehensive AdTech bidding engine with Django REST API, async job processing, TypeScript microservices, Kubernetes deployment, and full CI/CD pipeline.
 
@@ -250,13 +250,13 @@ Test categories:
 - `DATABASE_URL`: PostgreSQL connection string
 - `REDIS_URL`: Redis connection string
 
-## Bonus Feature Deep Dive
+## Bonus Features Deep Dive
 
 ### 🚀 TypeScript Competitor Monitor
 
 The competitor monitor is a standalone TypeScript microservice that enhances the bidding engine with real-time competitor pricing data.
 
-#### Feature
+#### Features
 
 - **Automated Fetching**: Polls DummyJSON API every 5 minutes
 - **Data Storage**: Pushes standardized competitor prices to Redis
