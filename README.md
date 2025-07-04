@@ -282,29 +282,6 @@ prices = [json.loads(p) for p in redis_client.lrange('competitor_prices', 0, 9)]
 - **PostgreSQL**: Primary database with persistent storage
 - **Redis**: Message queue and cache
 
-#### Pipeline Stages
-
-1. **Code Quality**
-
-   ```bash
-   # Linting with ruff
-   ruff check . --select=E9,F63,F7,F82
-
-   # Formatting with black
-   black --check --diff .
-
-   # Import sorting
-   isort --check-only --diff .
-   ```
-
-2. **Testing**
-
-   ```bash
-   # Run tests with coverage
-   coverage run -m pytest tests/ -v
-   coverage report --fail-under=80
-   ```
-
 ### Production Deployment Architecture
 
 ## Complete Feature Matrix
