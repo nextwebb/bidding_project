@@ -5,10 +5,8 @@ This project implements a comprehensive AdTech bidding engine with Django REST A
 ## Features
 
 ### Core Application
+
 - **REST API**: POST `/api/bid/` endpoint for bid calculations
-
-![Running endpoint for bid calculations](./API_test.png).
-
 - **Async Jobs**: Daily budget audit task using Huey and Redis
 - **Legacy Migration**: PHP priceHelper.php ported to Python
 - **Database Optimization**: Performance indexes for time-based queries
@@ -17,18 +15,21 @@ This project implements a comprehensive AdTech bidding engine with Django REST A
 ### Bonus Features (All Implemented)
 
 #### 🚀 TypeScript Microservice
+
 - **Competitor Monitor**: Fetches pricing data from DummyJSON API
 - **Redis Integration**: Pushes competitor prices to `competitor_prices` list
 - **Health Monitoring**: HTTP endpoints for system health checks
 - **Production Ready**: Structured logging, error handling, Docker containerized
 
 #### ☸️ Kubernetes Deployment
+
 - **Helm Chart**: Production-ready chart for EKS deployment
 - **Auto-scaling**: Horizontal Pod Autoscaler (HPA) configured
 - **Load Balancing**: AWS ALB integration with ingress
 - **Multi-component**: Web app, workers, competitor monitor, PostgreSQL, Redis
 
 #### 🔄 CI/CD Pipeline
+
 - **GitHub Actions**: Complete workflow with multiple stages
 - **Code Quality**: Ruff linting, Black formatting, security scanning
 - **Testing**: Automated testing with coverage reporting
@@ -38,17 +39,20 @@ This project implements a comprehensive AdTech bidding engine with Django REST A
 ## Quick Start
 
 ### Prerequisites
+
 - Docker and docker-compose
 - Python 3.9+ (if running locally)
 
 ### Local Development
 
 1. **Build and start all services (including competitor monitor):**
+
    ```bash
    docker-compose up --build
    ```
 
 2. **Run database migrations:**
+
    ```bash
    docker-compose exec web python manage.py migrate
    ```
@@ -72,21 +76,25 @@ This project implements a comprehensive AdTech bidding engine with Django REST A
 Calculate adjusted CPC based on current CPC and target ROAS.
 
 **Request:**
+
 ```json
 {
   "product_id": 123,
-  "current_cpc": 1.50,
+  "current_cpc": 1.5,
   "target_roas": 150.0
 }
 ```
 
 **Response:**
+
 ```json
 {
   "adjusted_cpc": 2.25,
   "bid_id": 1
 }
 ```
+
+![Running endpoint for bid calculations](./API_test.png).
 
 **Formula:** `adjusted_cpc = current_cpc * (target_roas / 100)`
 
@@ -104,6 +112,7 @@ daily_budget_audit()
 ```
 
 The task:
+
 - Fetches ProductBid records from the last 7 days
 - Flags bids where `abs(adjusted_cpc - current_cpc) > 0.20 * current_cpc`
 - Prints a detailed report to stdout
@@ -111,17 +120,21 @@ The task:
 ## Database Performance Optimization
 
 ### Problem Query
+
 The slow query that needed optimization:
+
 ```sql
-SELECT * FROM bidding_productbid 
-WHERE calculated_at > now() - interval '7 days' 
+SELECT * FROM bidding_productbid
+WHERE calculated_at > now() - interval '7 days'
 ORDER BY product_id;
 ```
 
 ### Solution
+
 Added a composite index in migration `0002_performance_index.py`:
+
 ```sql
-CREATE INDEX bidding_productbid_performance_idx 
+CREATE INDEX bidding_productbid_performance_idx
 ON bidding_productbid (calculated_at DESC, product_id);
 ```
 
@@ -131,11 +144,13 @@ ON bidding_productbid (calculated_at DESC, product_id);
 # Run the database performance test
 docker-compose exec web python -m pytest test_performance.py::test_query_performance -v -s
 ```
+
 ![Database performance test](./database_performance_test.png).
 
 ### Performance Analysis
 
 **Before Index (EXPLAIN ANALYZE):**
+
 ```sql
 Sort  (cost=4.45..4.46 rows=1 width=57) (actual time=0.089..0.089 rows=0 loops=1)
   Sort Key: product_id
@@ -148,8 +163,9 @@ Execution Time: 0.117 ms
 ```
 
 **After Index (EXPLAIN ANALYZE):**
+
 ```sql
-Index Scan using bidding_productbid_performance_idx on bidding_productbid  
+Index Scan using bidding_productbid_performance_idx on bidding_productbid
   (cost=0.28..8.30 rows=1 width=57) (actual time=0.012..0.012 rows=0 loops=1)
   Index Cond: (calculated_at > (now() - '7 days'::interval))
 
@@ -158,6 +174,7 @@ Execution Time: 0.023 ms
 ```
 
 **Performance Improvement:**
+
 - Execution time: 0.117ms → 0.025ms (78% faster)
 - Planning time: 0.234ms → 0.089ms (62% faster)
 - Query method: Sequential scan → Index scan
@@ -165,11 +182,13 @@ Execution Time: 0.023 ms
 ## Testing
 
 Run the full test suite:
+
 ```bash
 pytest
 ```
 
 Test categories:
+
 - **Unit Tests**: PriceHelper PHP→Python port validation
 - **API Tests**: REST endpoint functionality
 - **Integration Tests**: Database operations
@@ -196,6 +215,7 @@ Test categories:
 ## Architecture Decisions
 
 ### Technology Stack
+
 - **Django 4.0**: Mature web framework with excellent ORM
 - **Django REST Framework**: Professional API development
 - **PostgreSQL**: Robust RDBMS with excellent indexing
@@ -203,8 +223,9 @@ Test categories:
 - **Huey**: Simple, reliable async task processing
 
 ### Design Choices
+
 1. **Legacy Migration**: Maintained identical PHP behavior including validation logic
-2. **Database Design**: Added calculated_at field with indexing for time-based queries  
+2. **Database Design**: Added calculated_at field with indexing for time-based queries
 3. **Error Handling**: Comprehensive validation with meaningful error messages
 4. **Testing**: High coverage across unit, integration, and API tests
 
@@ -236,6 +257,7 @@ Test categories:
 The competitor monitor is a standalone TypeScript microservice that enhances the bidding engine with real-time competitor pricing data.
 
 #### Features
+
 - **Automated Fetching**: Polls DummyJSON API every 5 minutes
 - **Data Storage**: Pushes standardized competitor prices to Redis
 - **Health Monitoring**: HTTP endpoints at `:3001/health` and `:3001/prices`
@@ -243,6 +265,7 @@ The competitor monitor is a standalone TypeScript microservice that enhances the
 - **Production Ready**: Structured logging, Docker containerization
 
 #### Usage
+
 ```bash
 # Check competitor monitor health
 curl http://localhost:3001/health
@@ -256,6 +279,7 @@ docker build -t competitor-monitor .
 ```
 
 #### Integration with Django
+
 ```python
 # Consume competitor prices in Django
 import redis
@@ -270,6 +294,7 @@ prices = [json.loads(p) for p in redis_client.lrange('competitor_prices', 0, 9)]
 Production-ready Kubernetes deployment using Helm charts for Amazon EKS.
 
 #### Features
+
 - **Multi-Environment**: Staging and production configurations
 - **Auto-scaling**: HPA for web and worker pods
 - **Load Balancing**: AWS ALB integration
@@ -277,6 +302,7 @@ Production-ready Kubernetes deployment using Helm charts for Amazon EKS.
 - **Security**: Pod security contexts, service accounts
 
 #### Quick Deploy
+
 ```bash
 # Install to staging
 helm install adtech-staging chart/ \
@@ -284,7 +310,7 @@ helm install adtech-staging chart/ \
   --set image.tag=v1.0.0 \
   --set env.DEBUG=1
 
-# Install to production  
+# Install to production
 helm install adtech-prod chart/ \
   --namespace production \
   --set image.tag=v1.0.0 \
@@ -293,6 +319,7 @@ helm install adtech-prod chart/ \
 ```
 
 #### Components Deployed
+
 - **Web App**: Django API with HPA (2-10 replicas)
 - **Workers**: Huey task processors (2 replicas)
 - **Competitor Monitor**: TypeScript service (1 replica)
@@ -306,24 +333,27 @@ Comprehensive GitHub Actions workflow with security scanning and automated deplo
 #### Pipeline Stages
 
 1. **Code Quality**
+
    ```bash
    # Linting with ruff
    ruff check . --select=E9,F63,F7,F82
-   
+
    # Formatting with black
    black --check --diff .
-   
+
    # Import sorting
    isort --check-only --diff .
    ```
 
 2. **Security Scanning**
+
    - Dependency vulnerability scanning
    - Container image security analysis
    - Secrets detection with TruffleHog
    - License compliance checking
 
 3. **Testing**
+
    ```bash
    # Run tests with coverage
    coverage run -m pytest tests/ -v
@@ -337,6 +367,7 @@ Comprehensive GitHub Actions workflow with security scanning and automated deplo
    - Slack notifications
 
 #### Workflow Files
+
 - `.github/workflows/ci.yml`: Main CI/CD pipeline
 - `.github/workflows/security.yml`: Security scanning
 
@@ -383,14 +414,14 @@ Comprehensive GitHub Actions workflow with security scanning and automated deplo
 
 ## Complete Feature Matrix
 
-| Feature Category | Core Tasks | Bonus Tasks | Status |
-|-----------------|------------|-------------|--------|
-| **REST API** | ✅ POST /api/bid/ | ➕ Health endpoints | ✅ Complete |
-| **Async Jobs** | ✅ Huey + Redis | ➕ Management commands | ✅ Complete |
-| **PHP Migration** | ✅ price_helper.py | ➕ Full test coverage | ✅ Complete |
-| **DB Performance** | ✅ Index optimization | ➕ Query analysis tools | ✅ Complete |
-| **TypeScript Service** | ➕ Competitor monitor | ➕ Health monitoring | ✅ Complete |
-| **Kubernetes** | ➕ Helm chart | ➕ Auto-scaling + ALB | ✅ Complete |
-| **CI/CD** | ➕ GitHub Actions | ➕ Security + Multi-env | ✅ Complete |
+| Feature Category       | Core Tasks            | Bonus Tasks             | Status      |
+| ---------------------- | --------------------- | ----------------------- | ----------- |
+| **REST API**           | ✅ POST /api/bid/     | ➕ Health endpoints     | ✅ Complete |
+| **Async Jobs**         | ✅ Huey + Redis       | ➕ Management commands  | ✅ Complete |
+| **PHP Migration**      | ✅ price_helper.py    | ➕ Full test coverage   | ✅ Complete |
+| **DB Performance**     | ✅ Index optimization | ➕ Query analysis tools | ✅ Complete |
+| **TypeScript Service** | ➕ Competitor monitor | ➕ Health monitoring    | ✅ Complete |
+| **Kubernetes**         | ➕ Helm chart         | ➕ Auto-scaling + ALB   | ✅ Complete |
+| **CI/CD**              | ➕ GitHub Actions     | ➕ Security + Multi-env | ✅ Complete |
 
 This solution demonstrates enterprise-grade AdTech development practices with comprehensive testing, security, monitoring, and deployment automation suitable for production environments.
