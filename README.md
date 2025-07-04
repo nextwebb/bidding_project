@@ -6,6 +6,9 @@ This project implements a comprehensive AdTech bidding engine with Django REST A
 
 ### Core Application
 - **REST API**: POST `/api/bid/` endpoint for bid calculations
+
+![Running endpoint for bid calculations](./API_test.png).
+
 - **Async Jobs**: Daily budget audit task using Huey and Redis
 - **Legacy Migration**: PHP priceHelper.php ported to Python
 - **Database Optimization**: Performance indexes for time-based queries
@@ -54,6 +57,8 @@ This project implements a comprehensive AdTech bidding engine with Django REST A
    ```bash
    docker-compose exec web pytest
    ```
+
+![All tests passed](./tests_passed.png).
 
 4. **Access services:**
    - Django API: http://localhost:8000
@@ -126,7 +131,7 @@ ON bidding_productbid (calculated_at DESC, product_id);
 # Run the database performance test
 docker-compose exec web python -m pytest test_performance.py::test_query_performance -v -s
 ```
-
+![Database performance test](./database_performance_test.png).
 
 ### Performance Analysis
 
