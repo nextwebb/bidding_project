@@ -1,0 +1,411 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  lint:
+    name: Code Linting
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ruff black isort
+
+    - name: Run ruff linting
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        ruff check . --select=E9,F63,F7,F82 --show-source
+        # Check all other linting rules
+        ruff check .
+
+    - name: Check code formatting with black
+      run: |
+        black --check --diff .
+
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only --diff .
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install safety
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety bandit
+
+    - name: Run safety check
+      run: |
+        pip install -r requirements.txt
+        safety check
+
+    - name: Run bandit security linter
+      run: |
+        bandit -r bidding/ backend/ -f json -o bandit-report.json
+        bandit -r bidding/ backend/
+
+    - name: Upload security scan results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: bandit-report.json
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: bidding_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install coverage pytest-cov
+
+    - name: Set up environment variables
+      run: |
+        echo "DEBUG=1" >> $GITHUB_ENV
+        echo "DATABASE_URL=postgres://postgres:postgres@localhost:5432/bidding_db" >> $GITHUB_ENV
+        echo "REDIS_URL=redis://localhost:6379/0" >> $GITHUB_ENV
+
+    - name: Run database migrations
+      run: |
+        python manage.py migrate --noinput
+
+    - name: Run tests with coverage
+      run: |
+        coverage run -m pytest tests/ -v --tb=short
+        coverage xml
+        coverage report
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: |
+          coverage.xml
+          .coverage
+
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+
+    strategy:
+      matrix:
+        component: [backend, competitor-monitor]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata (tags, labels)
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix=sha-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push backend Docker image
+      if: matrix.component == 'backend'
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build and push competitor-monitor Docker image
+      if: matrix.component == 'competitor-monitor'
+      uses: docker/build-push-action@v5
+      with:
+        context: ./competitor-monitor
+        file: ./competitor-monitor/Dockerfile
+        push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  helm-lint:
+    name: Helm Chart Linting
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+
+    - name: Add Helm repositories
+      run: |
+        helm repo add bitnami https://charts.bitnami.com/bitnami
+        helm repo update
+
+    - name: Lint Helm chart
+      run: |
+        helm lint chart/
+
+    - name: Template Helm chart
+      run: |
+        helm template adtech-test chart/ > /tmp/manifests.yaml
+
+    - name: Validate Kubernetes manifests
+      uses: instrumenta/kubeval-action@master
+      with:
+        files: /tmp/manifests.yaml
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Start services with Docker Compose
+      run: |
+        docker-compose up -d --build
+        sleep 30  # Wait for services to start
+
+    - name: Wait for services to be healthy
+      run: |
+        timeout 120s bash -c 'until curl -f http://localhost:8000/health/ 2>/dev/null; do sleep 5; done'
+        timeout 60s bash -c 'until curl -f http://localhost:3001/health 2>/dev/null; do sleep 5; done'
+
+    - name: Run integration tests
+      run: |
+        # Test main API
+        curl -X POST http://localhost:8000/api/bid/ \
+          -H "Content-Type: application/json" \
+          -d '{"product_id": 123, "current_cpc": 1.50, "target_roas": 150.0}' \
+          -f
+
+        # Test competitor monitor health
+        curl -f http://localhost:3001/health
+
+        # Test competitor prices endpoint
+        curl -f http://localhost:3001/prices
+
+    - name: Check logs for errors
+      if: failure()
+      run: |
+        docker-compose logs web
+        docker-compose logs worker
+        docker-compose logs competitor-monitor
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose down -v
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, helm-lint, integration-test]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: staging
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name adtech-staging-cluster --region us-east-1
+
+    - name: Add Helm repositories
+      run: |
+        helm repo add bitnami https://charts.bitnami.com/bitnami
+        helm repo update
+
+    - name: Deploy to staging
+      run: |
+        helm upgrade --install adtech-staging chart/ \
+          --namespace staging \
+          --create-namespace \
+          --set image.tag=sha-${{ github.sha }} \
+          --set env.DEBUG=1 \
+          --set ingress.hosts[0].host=staging-api.adtech.company.com \
+          --wait --timeout=10m
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, helm-lint, integration-test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name adtech-prod-cluster --region us-east-1
+
+    - name: Add Helm repositories
+      run: |
+        helm repo add bitnami https://charts.bitnami.com/bitnami
+        helm repo update
+
+    - name: Deploy to production
+      run: |
+        helm upgrade --install adtech-prod chart/ \
+          --namespace production \
+          --create-namespace \
+          --set image.tag=sha-${{ github.sha }} \
+          --set env.DEBUG=0 \
+          --set env.LOG_LEVEL=WARNING \
+          --set replicaCount=3 \
+          --set resources.limits.memory=1Gi \
+          --set postgresql.primary.persistence.size=50Gi \
+          --set ingress.hosts[0].host=api.adtech.company.com \
+          --wait --timeout=15m
+
+  notify:
+    name: Notify Team
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+
+    steps:
+    - name: Notify Slack on success
+      if: needs.deploy-production.result == 'success'
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: ':rocket: AdTech Bidding Engine deployed successfully to production!'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Notify Slack on failure
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: ':x: AdTech Bidding Engine deployment failed. Check logs for details.'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

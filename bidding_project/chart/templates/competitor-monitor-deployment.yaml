@@ -1,0 +1,77 @@
+{{- if .Values.competitorMonitor.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "adtech-bidding-engine.fullname" . }}-competitor
+  labels:
+    {{- include "adtech-bidding-engine.labels" . | nindent 4 }}
+    app.kubernetes.io/component: competitor-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "adtech-bidding-engine.competitorSelectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: competitor-monitor
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "adtech-bidding-engine.competitorSelectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: competitor-monitor
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "adtech-bidding-engine.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: competitor-monitor
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.competitorMonitor.image.repository }}:{{ .Values.competitorMonitor.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3001
+              protocol: TCP
+          env:
+            - name: REDIS_URL
+              value: {{ printf "redis://%s-redis-master:6379" (include "adtech-bidding-engine.fullname" .) | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.env.LOG_LEVEL | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.competitorMonitor.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,25 @@
+apiVersion: v2
+name: adtech-bidding-engine
+description: A Helm chart for AdTech Bidding Engine on EKS
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - adtech
+  - bidding
+  - django
+  - redis
+  - postgresql
+
+home: https://github.com/company/adtech-bidding-engine
+sources:
+  - https://github.com/company/adtech-bidding-engine
+
+maintainers:
+  - name: AdTech Engineering
+    email: engineering@adtech.com
+
+annotations:
+  category: AdTech
+  licenses: MIT

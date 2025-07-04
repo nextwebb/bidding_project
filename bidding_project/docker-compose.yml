@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: bidding_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DEBUG=1
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/bidding_db
+      - REDIS_URL=redis://redis:6379/0
+
+  worker:
+    build: .
+    command: python manage.py run_huey --workers=2
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DEBUG=1
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/bidding_db
+      - REDIS_URL=redis://redis:6379/0
+
+  competitor-monitor:
+    build: ./competitor-monitor
+    ports:
+      - "3001:3001"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
