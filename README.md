@@ -263,17 +263,6 @@ cd competitor-monitor
 docker build -t competitor-monitor .
 ```
 
-#### Integration with Django
-
-```python
-# Consume competitor prices in Django
-import redis
-import json
-
-redis_client = redis.Redis.from_url(settings.REDIS_URL)
-prices = [json.loads(p) for p in redis_client.lrange('competitor_prices', 0, 9)]
-```
-
 #### Components Deployed
 
 - **Web App**: Django API with HPA (2-10 replicas)
